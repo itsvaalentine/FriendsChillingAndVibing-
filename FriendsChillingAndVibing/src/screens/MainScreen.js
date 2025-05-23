@@ -32,34 +32,27 @@ export default function MainScreen() {
   const fetchInitialData = async () => {
     setIsLoading(true);
     try {
-      // const trending = await getTrending('movie', 'week');
-      // setTrendingMovies(trending.slice(0, 5));
-
-      // const popular = await getByCategory(category.movie, movieType.popular);
-      // setPopularMovies(popular);
-
-      // const topRated = await getByCategory(category.movie, movieType.top_rated);
-      // setTopRatedMovies(topRated);
-
-      // const popTV = await getByCategory(category.tv, tvType.popular);
-      // setPopularTV(popTV);
-
-      // const topTV = await getByCategory(category.tv, tvType.top_rated);
-      // setTopRatedTV(topTV);
-
       const trendingNowMovies = await getTrending('movie', 'day');
-      setTrendingMoviesNow(trendingNowMovies.map(m => ({
-        ...m,
-        poster: `https://image.tmdb.org/t/p/w500${m.poster_path}`,
-        title: m.title,
-        mediaType: 'movie'
-      })));
-
       const trendingNowTV = await getTrending('tv', 'day');
+      console.log('Trending TV:', trendingNowTV);
+      console.log('Trending Movies:', trendingNowMovies);
+
+      const formatItem = (item, isTV = false) => ({
+        id: item.id,
+        title: isTV ? item.name : item.title,
+        poster: item.poster_path
+          ? `https://image.tmdb.org/t/p/w500${item.poster_path}`
+          : 'https://via.placeholder.com/300x450?text=No+Image',
+        mediaType: isTV ? 'tv' : 'movie',
+      });
+
+      setTrendingMoviesNow(trendingNowMovies.map(m => formatItem(m, false)));
       setTrendingTVNow(trendingNowTV.map(m => ({
-        ...m,
-        poster: `https://image.tmdb.org/t/p/w500${m.poster_path}`,
-        title: m.name, // ← nombre para series
+        id: m.id,
+        title: m.name,
+        poster: m.poster_path
+          ? `https://image.tmdb.org/t/p/w500${m.poster_path}`
+          : 'https://via.placeholder.com/300x450?text=No+Image',
         mediaType: 'tv'
       })));
 
@@ -71,6 +64,7 @@ export default function MainScreen() {
     }
   };
 
+
   useEffect(() => {
     fetchInitialData();
   }, []);
@@ -78,11 +72,16 @@ export default function MainScreen() {
 
 
 
-  const handleSearch = () => {
-      if (searchQuery.trim()) {
-        onSearch(searchQuery); // <-- ¡ya no setShowLoginModal aquí!
-      }
-    };
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+    const movies = await searchMovies(searchQuery);
+    const formatted = movies.map(m => ({
+      id: m.imdbID,
+      title: m.Title,
+      poster: m.Poster,
+    }));
+    setSearchResults(formatted);
+  };
 
   const openModal = async (movie) => {
     try {
@@ -182,9 +181,9 @@ export default function MainScreen() {
       )}
 
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
-          {trendingMoviesNow.length > 0 && (
+          {/* {trendingMoviesNow.length > 0 && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>🎞️ Películas del momento</Text>
+              <Text style={styles.sectionTitle}>🎞 Películas del momento</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 {trendingMoviesNow.map(item => (
                   <TouchableOpacity key={item.id} onPress={() => openModal(item)}>
@@ -207,7 +206,7 @@ export default function MainScreen() {
                 ))}
               </ScrollView>
             </View>
-          )}
+          )} */}
 
         {Object.keys(watchlists).map((listName, idx) => (
           <View key={idx} style={styles.section}>
@@ -441,5 +440,5 @@ const styles = StyleSheet.create({
   modalButtonText: {
     color: '#fff',
     fontWeight: 'bold',
-  },
+  },
 });
