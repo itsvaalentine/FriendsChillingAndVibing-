@@ -17,7 +17,7 @@ export default function LoginScreen({ navigation }) {
 
       if (response.ok) {
         setLoginStatus('success');
-        navigation.replace('HomeScreen');
+        navigation.replace('MainScreen');
       } else {
         setLoginStatus('fail');
       }

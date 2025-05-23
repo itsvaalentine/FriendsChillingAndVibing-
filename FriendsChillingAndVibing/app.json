@@ -13,7 +13,7 @@
       "backgroundColor": "#ffffff"
     },
     "extra": {
-      "API_URL": "https://tuservidor.com/api"
+      "API_URL": "http://192.168.5.207:3000"
     },
     "ios": {
       "supportsTablet": true

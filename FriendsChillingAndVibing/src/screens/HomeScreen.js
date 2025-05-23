@@ -2,6 +2,10 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, TextInput } from 'react-native';
 import { getByCategory, getTrending, getMovieDetails, searchMovies, category, movieType, tvType } from '../services/tmdb';
 import { Modal } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import SearchBar from '../components/SearchBar';
+
+
 
 
 // Componente de Header
@@ -25,7 +29,7 @@ const Header = ({ navigation, onSearch, setShowLoginModal  }) => {
   return (
     <View style={styles.header}>
       <View style={styles.headerLeft}>
-        <Text style={styles.appName}>Friend'&Chill</Text>
+        <Text style={styles.appName}>Friends&Chill</Text>
       </View>
       
       <View style={styles.headerRight}>
@@ -45,7 +49,7 @@ const Header = ({ navigation, onSearch, setShowLoginModal  }) => {
               style={styles.searchButton} 
               onPress={handleSearch}
             >
-              <Text style={styles.searchButtonText}>🔍</Text>
+              {/* <Text style={styles.searchButtonText}>🔍</Text> */}
             </TouchableOpacity>
             <TouchableOpacity 
               style={styles.closeSearchButton} 
@@ -60,7 +64,7 @@ const Header = ({ navigation, onSearch, setShowLoginModal  }) => {
               style={styles.iconButton} 
               onPress={() => setShowSearch(true)}
             >
-              <Text style={styles.iconText}>🔍</Text>
+              {/* <Text style={styles.iconText}>🔍</Text> */}
             </TouchableOpacity>
             <TouchableOpacity 
               style={styles.loginButton} 
@@ -76,63 +80,22 @@ const Header = ({ navigation, onSearch, setShowLoginModal  }) => {
 };
 
 // Componente de película con hover
-const MovieItem = ({ item, onPress }) => {
-  const [isHovered, setIsHovered] = useState(false);
-  const [details, setDetails] = useState(null);
-
-  const handleHoverIn = async () => {
-    setIsHovered(true);
-    if (!details) {
-      const movieDetails = await getMovieDetails(item.id);
-      setDetails(movieDetails);
-    }
-  };
-
+const MovieItem = ({ item, openModal }) => {
   return (
-    <TouchableOpacity 
-      onPress={onPress}
-      onLongPress={handleHoverIn}
-      
-    >
-
+    <TouchableOpacity onPress={() => openModal(item)}>
       <Image 
         source={{ uri: item.poster }} 
         style={styles.poster}
       />
-      <Text style={styles.itemTitle} numberOfLines={1}>{item.title}</Text>
+      <Text style={styles.itemTitle} numberOfLines={1} ellipsizeMode='tail'>{item.title}</Text>
       <Text style={styles.rating}>⭐ {item.rating?.toFixed(1) || 'N/A'}</Text>
-      
-      {isHovered && details && (
-        <View style={styles.hoverCard}>
-          <Text style={styles.hoverTitle}>{details.Title}</Text>
-          <Text style={styles.hoverYear}>{details.Year}</Text>
-          <Text style={styles.hoverDescription} numberOfLines={3}>
-            {details.Plot}
-          </Text>
-          {details.Genre && (
-            <Text style={styles.hoverGenre}>{details.Genre}</Text>
-          )}
-          {details.Runtime && (
-            <Text style={styles.hoverRuntime}>{details.Runtime}</Text>
-          )}
-          {details.WatchProviders && details.WatchProviders.Streaming && 
-          details.WatchProviders.Streaming.length > 0 && (
-            <View>
-              <Text style={styles.hoverProvidersTitle}>Streaming en:</Text>
-              <Text style={styles.hoverProviders}>
-                {details.WatchProviders.Streaming.join(', ')}
-              </Text>
-            </View>
-          )}
-        </View>
-      )}
     </TouchableOpacity>
   );
 };
 
 
 // Componente de lista horizontal sin botón "Ver más"
-const MovieListRow = ({ title, data, navigation, category }) => (
+const MovieListRow = ({ title, data, navigation, category, openModal }) => (
   <View style={styles.sectionContainer}>
     <Text style={styles.sectionTitle}>{title}</Text>
     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -140,7 +103,7 @@ const MovieListRow = ({ title, data, navigation, category }) => (
         <MovieItem 
           key={item.id} 
           item={item} 
-          onPress={() => navigation.navigate('Detail', { id: item.id, category })}
+          openModal={openModal}
         />
       ))}
     </ScrollView>
@@ -191,6 +154,10 @@ export default function HomeScreen({ navigation }) {
   const [searchResults, setSearchResults] = React.useState(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [showLoginModal, setShowLoginModal] = React.useState(false);
+  const [selectedMovie, setSelectedMovie] = useState(null);
+  const [showMovieModal, setShowMovieModal] = useState(false);
+  const [movies, setMovies] = useState([]);
+
 
 
   React.useEffect(() => {
@@ -241,6 +208,23 @@ export default function HomeScreen({ navigation }) {
     // }
   };
 
+  const openModal = async (movie) => {
+    try {
+      const details = await getMovieDetails(movie.id);
+      setSelectedMovie(details);
+      setShowMovieModal(true);
+    } catch (error) {
+      console.error('Error al cargar detalles de la película:', error);
+    }
+  };
+
+
+  const handleReload = async () => {
+    const trending = await getTrending(); // o tu API de populares
+    setMovies(trending);
+  };
+
+
   if (isLoading) {
     return (
       <View style={styles.loading}>
@@ -250,143 +234,196 @@ export default function HomeScreen({ navigation }) {
   }
 
   return (
-    <View style={[styles.container, { marginTop: 0 }]}>
-      {/* Header with search and login */}
-      <Header 
-        navigation={navigation} 
-        onSearch={handleSearch}
-        setShowLoginModal={setShowLoginModal}
-      />
-      <Modal
-        visible={showLoginModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowLoginModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Inicia esta aventura iniciando sesión</Text>
-            <Text style={styles.modalText}>
-              Para encontrar tu selección personalizada de películas
-            </Text>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#3F3330' }}>
+      <View style={[styles.container, { marginTop: 0 }]}>
+        {/* Header with search and login */}
+        <Header 
+          navigation={navigation} 
+          onSearch={handleSearch}
+          setShowLoginModal={setShowLoginModal}
+        />
+        <Modal
+          visible={showLoginModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowLoginModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Inicia esta aventura iniciando sesión</Text>
+              <Text style={styles.modalText}>
+                Para encontrar tu selección personalizada de películas
+              </Text>
 
-            <TouchableOpacity
-              style={styles.modalButtonPrimary}
-              onPress={() => {
-                setShowLoginModal(false);
-                navigation.navigate('LoginScreen');
-              }}
-            >
-              <Text style={styles.modalButtonText}>Iniciar Sesión</Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalButtonPrimary}
+                onPress={() => {
+                  setShowLoginModal(false);
+                  navigation.navigate('LoginScreen');
+                }}
+              >
+                <Text style={styles.modalButtonText}>Iniciar Sesión</Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.modalButtonSecondary}
-              onPress={() => setShowLoginModal(false)}
-            >
-              <Text style={styles.modalButtonTextSecondary}>Cancelar</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      <ScrollView>
-        {searchResults ? (
-          // Search results view
-          <View style={styles.searchResultsContainer}>
-            <View style={styles.searchHeader}>
-              <Text style={styles.searchResultsTitle}>Resultados de búsqueda</Text>
-              <TouchableOpacity onPress={fetchInitialData}>
-                <Text style={styles.clearSearchText}>Volver al inicio</Text>
+              <TouchableOpacity
+                style={styles.modalButtonSecondary}
+                onPress={() => setShowLoginModal(false)}
+              >
+                <Text style={styles.modalButtonTextSecondary}>Cancelar</Text>
               </TouchableOpacity>
             </View>
-            
-            <View style={styles.searchResults}>
-              {searchResults.length > 0 ? (
-                searchResults.map(item => (
+          </View>
+        </Modal>
+        <SearchBar onSearch={handleSearch} onReload={handleReload} />
+        <Modal
+          visible={showMovieModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowMovieModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.movieModal}>
+              {selectedMovie && (
+                <>
+                  <Image
+                    source={{ uri: selectedMovie.Poster }}
+                    style={styles.movieModalPoster}
+                    resizeMode="cover"
+                  />
+                  <Text style={styles.modalTitle}>{selectedMovie.Title}</Text>
+                  <Text style={styles.hoverYear}>{selectedMovie.Year}</Text>
+                  <Text style={styles.hoverDescription}>{selectedMovie.Plot}</Text>
+                  <Text style={styles.hoverGenre}>{selectedMovie.Genre}</Text>
+                  <Text style={styles.hoverRuntime}>{selectedMovie.Runtime}</Text>
+                  
+
+                  {selectedMovie.WatchProviders?.Streaming?.length > 0 && (
+                    <>
+                      <Text style={styles.hoverProvidersTitle}>Disponible en:</Text>
+                      <Text style={styles.hoverProviders}>
+                        {selectedMovie.WatchProviders.Streaming.join(', ')}
+                      </Text>
+                    </>
+                  )}
+
                   <TouchableOpacity
-                    key={item.id}
-                    style={styles.searchResultItem}
-                    onPress={() => navigation.navigate('Detail', { 
-                      id: item.id, 
-                      category: item.media_type || category.movie 
-                    })}
+                    style={styles.modalButtonPrimary}
+                    onPress={() => setShowMovieModal(false)}
                   >
-                    <Image
-                      source={{ uri: item.poster }}
-                      style={styles.searchItemPoster}
-                    />
-                    <View style={styles.searchItemInfo}>
-                      <Text style={styles.searchItemTitle}>{item.title}</Text>
-                      <Text style={styles.searchItemYear}>
-                        {item.release_date ? item.release_date.substring(0, 4) : 'N/A'}
-                      </Text>
-                      <Text style={styles.searchItemRating}>
-                        ⭐ {item.rating?.toFixed(1) || 'N/A'}
-                      </Text>
-                      {item.overview && (
-                        <Text style={styles.searchItemOverview} numberOfLines={2}>
-                          {item.overview}
-                        </Text>
-                      )}
-                    </View>
+                    <Text style={styles.modalButtonText}>Cerrar</Text>
                   </TouchableOpacity>
-                ))
-              ) : (
-                <Text style={styles.noResultsText}>
-                  No se encontraron resultados. Intenta con otra búsqueda.
-                </Text>
+                </>
               )}
             </View>
           </View>
-        ) : (
-          // Home content
-          <>
-            {/* Hero Slide */}
-            {trendingMovies.length > 0 && (
-              <HeroSlide 
-                movie={trendingMovies[0]} 
-                onPress={() => navigation.navigate('Detail', { id: trendingMovies[0].id, category: 'movie' })}
+        </Modal>
+
+
+
+        <ScrollView>
+          {searchResults ? (
+            // Search results view
+            <View style={styles.searchResultsContainer}>
+              <View style={styles.searchHeader}>
+                <Text style={styles.searchResultsTitle}>Resultados de búsqueda</Text>
+                <TouchableOpacity onPress={fetchInitialData}>
+                  <Text style={styles.clearSearchText}>Volver al inicio</Text>
+                </TouchableOpacity>
+              </View>
+              
+              <View style={styles.searchResults}>
+                {searchResults.length > 0 ? (
+                  searchResults.map(item => (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={styles.searchResultItem}
+                      onPress={() => navigation.navigate('Detail', { 
+                        id: item.id, 
+                        category: item.media_type || category.movie 
+                      })}
+                    >
+                      <Image
+                        source={{ uri: item.poster }}
+                        style={styles.searchItemPoster}
+                      />
+                      <View style={styles.searchItemInfo}>
+                        <Text style={styles.searchItemTitle}>{item.title}</Text>
+                        <Text style={styles.searchItemYear}>
+                          {item.release_date ? item.release_date.substring(0, 4) : 'N/A'}
+                        </Text>
+                        <Text style={styles.searchItemRating}>
+                          ⭐ {item.rating?.toFixed(1) || 'N/A'}
+                        </Text>
+                        {item.overview && (
+                          <Text style={styles.searchItemOverview} numberOfLines={2}>
+                            {item.overview}
+                          </Text>
+                        )}
+                      </View>
+                    </TouchableOpacity>
+                  ))
+                ) : (
+                  <Text style={styles.noResultsText}>
+                    No se encontraron resultados. Intenta con otra búsqueda.
+                  </Text>
+                )}
+              </View>
+            </View>
+          ) : (
+            // Home content
+            <>
+              {/* Hero Slide */}
+              {trendingMovies.length > 0 && (
+                <HeroSlide 
+                  movie={trendingMovies[0]} 
+                  onPress={() => navigation.navigate('Detail', { id: trendingMovies[0].id, category: 'movie' })}
+                />
+              )}
+              
+              {/* Películas Populares */}
+              <MovieListRow
+                title="Películas Populares"
+                data={popularMovies}
+                navigation={navigation}
+                category={category.movie}
+                openModal={openModal}
               />
-            )}
-            
-            {/* Películas Populares */}
-            <MovieListRow
-              title="Películas Populares"
-              data={popularMovies}
-              navigation={navigation}
-              category={category.movie}
-            />
-            
-            {/* Películas Mejor Valoradas */}
-            <MovieListRow
-              title="Películas Mejor Valoradas"
-              data={topRatedMovies}
-              navigation={navigation}
-              category={category.movie}
-            />
-            
-            {/* Series Populares */}
-            <MovieListRow
-              title="Series Populares"
-              data={popularTV}
-              navigation={navigation}
-              category={category.tv}
-            />
-            
-            {/* Series Mejor Valoradas */}
-            <MovieListRow
-              title="Series Mejor Valoradas"
-              data={topRatedTV}
-              navigation={navigation}
-              category={category.tv}
-            />
-          </>
-        )}
-      </ScrollView>
-    </View>
-  );
+              
+              {/* Películas Mejor Valoradas */}
+              <MovieListRow
+                title="Películas Mejor Valoradas"
+                data={topRatedMovies}
+                navigation={navigation}
+                category={category.movie}
+                openModal={openModal}
+              />
+              
+              {/* Series Populares */}
+              <MovieListRow
+                title="Series Populares"
+                data={popularTV}
+                navigation={navigation}
+                category={category.tv}
+                openModal={openModal}
+              />
+              
+              {/* Series Mejor Valoradas */}
+              <MovieListRow
+                title="Series Mejor Valoradas"
+                data={topRatedTV}
+                navigation={navigation}
+                category={category.tv}
+                openModal={openModal}
+              />
+            </>
+          )}
+        </ScrollView>
+      </View>
+    </SafeAreaView>  
+    );
 }
+
+// Estilos
 
 const styles = StyleSheet.create({
   container: {
@@ -621,10 +658,11 @@ const styles = StyleSheet.create({
   },
   itemTitle: {
     color: '#F1E9DC',
-    fontSize: 12,
+    fontSize: 13,
     marginTop: 5,
     textAlign: 'center',
     paddingHorizontal: 4,
+    width: 120,
   },
   rating: {
     color: '#E0C97C',
@@ -728,4 +766,19 @@ const styles = StyleSheet.create({
     color: '#A89B8B',
     fontWeight: 'bold',
   },
+  movieModal: {
+  width: '90%',
+  maxHeight: '80%',
+  backgroundColor: '#5C4434',
+  borderRadius: 10,
+  padding: 20,
+  alignItems: 'center',
+  },
+  movieModalPoster: {
+    width: '100%',
+    height: 250,
+    borderRadius: 8,
+    marginBottom: 10,
+  },
+
 });

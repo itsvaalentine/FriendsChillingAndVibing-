@@ -1,200 +1,366 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  TouchableOpacity, Image, TextInput, Modal
+  TouchableOpacity, Image, TextInput, Modal, Animated, FlatList
 } from 'react-native';
 import {
-  getByCategory, getTrending, getMovieDetails,
-  searchMovies, category, movieType, tvType,
-  searchTV
+  getTrending, getMovieDetails,
+  searchMovies, searchTV
 } from '../services/tmdb';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function MainScreen() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [movieResults, setMovieResults] = useState([]);
-  const [tvResults, setTVResults] = useState([]);
-  const [watchlistMovies, setWatchlistMovies] = useState([]);
-  const [watchlistSeries, setWatchlistSeries] = useState([]);
-  const [selected, setSelected] = useState(null);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [trendingMovies, setTrendingMovies] = useState([]);
-  const [trendingTV, setTrendingTV] = useState([]);
+  const [searchResults, setSearchResults] = useState([]);
+  const [watchlists, setWatchlists] = useState({});
+  const [customListModalVisible, setCustomListModalVisible] = useState(false);
+  const [customListName, setCustomListName] = useState('');
+  const [selectListModalVisible, setSelectListModalVisible] = useState(false);
+  const [movieToAdd, setMovieToAdd] = useState(null);
+  const [feedbackMessage, setFeedbackMessage] = useState('');
+  const toastOpacity = useState(new Animated.Value(0))[0];
+  const [selectedMovie, setSelectedMovie] = useState(null);
+  const [showMovieModal, setShowMovieModal] = useState(false);
+  const [trendingMoviesNow, setTrendingMoviesNow] = useState([]);
+  const [trendingTVNow, setTrendingTVNow] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    const fetchTrending = async () => {
-      const movies = await getTrending('movie');
-      const tv = await getTrending('tv');
-      setTrendingMovies(movies);
-      setTrendingTV(tv);
-    };
-    fetchTrending();
-  }, []);
 
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) return;
-    const movies = await searchMovies(searchQuery);
-    const series = await searchTV(searchQuery);
 
-    // 🔄 Adaptar formato a lo que usa tu renderHorizontal
-    const formattedMovies = movies.map(m => ({
-      id: m.imdbID,
-      title: m.Title,
-      poster: m.Poster,
-      overview: m.Plot,
-      overview: '',
-    }));
 
-    const formattedTV = series.ok
-      ? series.data.results.map(s => ({
-          id: s.id.toString(),
-          title: s.name,
-          poster: s.poster_path ? `https://image.tmdb.org/t/p/w300${s.poster_path}` : 'https://via.placeholder.com/300x450?text=No+Image',
-          overview: s.overview,
-        }))
-      : [];
+  const fetchInitialData = async () => {
+    setIsLoading(true);
+    try {
+      // const trending = await getTrending('movie', 'week');
+      // setTrendingMovies(trending.slice(0, 5));
 
-    setMovieResults(formattedMovies);
-    setTVResults(formattedTV);
-  };
+      // const popular = await getByCategory(category.movie, movieType.popular);
+      // setPopularMovies(popular);
 
-  const handleAdd = (item, type) => {
-    if (type === 'movie') {
-      setWatchlistMovies(prev =>
-        prev.find(m => m.id === item.id) ? prev : [...prev, item]
-      );
-    } else {
-      setWatchlistSeries(prev =>
-        prev.find(s => s.id === item.id) ? prev : [...prev, item]
-      );
+      // const topRated = await getByCategory(category.movie, movieType.top_rated);
+      // setTopRatedMovies(topRated);
+
+      // const popTV = await getByCategory(category.tv, tvType.popular);
+      // setPopularTV(popTV);
+
+      // const topTV = await getByCategory(category.tv, tvType.top_rated);
+      // setTopRatedTV(topTV);
+
+      const trendingNowMovies = await getTrending('movie', 'day');
+      setTrendingMoviesNow(trendingNowMovies.map(m => ({
+        ...m,
+        poster: `https://image.tmdb.org/t/p/w500${m.poster_path}`,
+        title: m.title,
+        mediaType: 'movie'
+      })));
+
+      const trendingNowTV = await getTrending('tv', 'day');
+      setTrendingTVNow(trendingNowTV.map(m => ({
+        ...m,
+        poster: `https://image.tmdb.org/t/p/w500${m.poster_path}`,
+        title: m.name, // ← nombre para series
+        mediaType: 'tv'
+      })));
+
+      setSearchResults([]);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const openModal = async (item, type) => {
-    const details = await getMovieDetails(item.id);
-    if (!details) return;
-    setSelected({
-      ...details,
-      title: details.Title,
-      overview: details.Plot,
-      poster: details.Poster,
-      platforms: details.WatchProviders?.Streaming || [],
-    });
-    setModalVisible(true);
+  useEffect(() => {
+    fetchInitialData();
+  }, []);
+
+
+
+
+  const handleSearch = () => {
+      if (searchQuery.trim()) {
+        onSearch(searchQuery); // <-- ¡ya no setShowLoginModal aquí!
+      }
+    };
+
+  const openModal = async (movie) => {
+    try {
+      const details = await getMovieDetails(movie.id, movie.mediaType || 'movie');
+      setSelectedMovie(details);
+      setShowMovieModal(true);
+    } catch (error) {
+      console.error('Error al cargar detalles de la película:', error);
+    }
   };
 
-  const renderHorizontal = (title, data, type) => (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        {data.map(item => (
-          <View key={item.id} style={styles.itemContainer}>
-            <TouchableOpacity onPress={() => openModal(item, type)}>
-              <Image
-                source={{ uri: item.poster }}
-                style={styles.poster}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.addIcon}
-              onPress={() => handleAdd(item, type)}
-            >
-              <Ionicons name="add-circle" size={24} color="#fff" />
-            </TouchableOpacity>
-            <Text numberOfLines={1} style={styles.itemTitle}>{item.title}</Text>
-          </View>
-        ))}
-      </ScrollView>
-    </View>
-  );
+
+  const handleAddToList = (movie, listName) => {
+    setWatchlists(prev => {
+      const updated = { ...prev };
+      if (!updated[listName]) updated[listName] = [];
+      const exists = updated[listName].some(m => m.id === movie.id);
+      if (!exists) updated[listName].push(movie);
+      return updated;
+    });
+
+    setFeedbackMessage(`${movie.title} agregado a "${listName}"`);
+    toastOpacity.setValue(0);
+    Animated.timing(toastOpacity, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+    setTimeout(() => {
+      Animated.timing(toastOpacity, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }).start(() => setFeedbackMessage(''));
+    }, 2500);
+  };
+
+  const renderMovie = ({ item }) => {
+    const alreadyInList = Object.values(watchlists).flat().some(m => m.id === item.id);
+    return (
+      <View style={styles.itemContainer}>
+        <TouchableOpacity onPress={() => openModal(item)}>
+          <Image source={{ uri: item.poster }} style={styles.poster} />
+        </TouchableOpacity>
+        {!alreadyInList && (
+          <TouchableOpacity
+            style={styles.addIcon}
+            onPress={() => {
+              setMovieToAdd(item);
+              setSelectListModalVisible(true);
+            }}
+          >
+            <Ionicons name="add-circle" size={24} color="#fff" />
+          </TouchableOpacity>
+        )}
+        <Text numberOfLines={1} style={styles.itemTitle}>{item.title}</Text>
+      </View>
+    );
+  };
+
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
+      setSearchResults([]);
+      fetchInitialData();
+    }
+  }, [searchQuery]);
 
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.header}>🎬 Friend'&Chill</Text>
-      <TextInput
-        style={styles.searchInput}
-        placeholder="Busca películas o series..."
-        placeholderTextColor="#6e5844"
-        value={searchQuery}
-        onChangeText={setSearchQuery}
-        onSubmitEditing={handleSearch}
-      />
-      <ScrollView>
-        {renderHorizontal('🔥 Películas populares', trendingMovies, 'movie')}
-        {renderHorizontal('📺 Series populares', trendingTV, 'tv')}
-        {renderHorizontal('➕ Agrega tu lista de películas por ver', movieResults, 'movie')}
-        {renderHorizontal('➕ Agrega tu lista de series por ver', tvResults, 'tv')}
-        {renderHorizontal('🎯 Tu lista de películas', watchlistMovies, 'movie')}
-        {renderHorizontal('🎯 Tu lista de series', watchlistSeries, 'tv')}
-      </ScrollView>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.headerRow}>
+        <Text style={styles.header}>🎬 Friends&Chill</Text>
+        <TouchableOpacity onPress={() => setCustomListModalVisible(true)}>
+          <Ionicons name="add-circle-outline" size={26} color="#f5e8da" />
+        </TouchableOpacity>
+      </View>
+      <View style={styles.searchContainer}>
+        <Ionicons name="search" size={20} color="#d6b58c" style={styles.searchIcon} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Buscar películas..."
+          placeholderTextColor="#d6b58c"
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          onSubmitEditing={handleSearch}
+        />
+      </View>
 
-      {selected && (
-        <Modal
-          visible={modalVisible}
-          animationType="slide"
-          onRequestClose={() => setModalVisible(false)}
-        >
-          <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>{selected.title}</Text>
-
-            <Image source={{ uri: selected.poster }} style={styles.modalImage} />
-
-            {selected.backdrop && (
-              <Image
-                source={{ uri: selected.backdrop }}
-                style={styles.modalImage}
-              />
-            )}
-
-            <ScrollView style={{ padding: 10 }}>
-              <Text style={styles.modalOverview}>{selected.overview}</Text>
-              <Text style={styles.platformTitle}>Disponible en:</Text>
-              {selected.platforms.length > 0 ? (
-                selected.platforms.map((p, idx) => (
-                  <Text key={idx} style={styles.platformName}>• {p}</Text>
-                ))
-              ) : (
-                <Text style={styles.platformName}>No disponible en streaming</Text>
-              )}
-            </ScrollView>
-
-            <TouchableOpacity onPress={() => setModalVisible(false)}>
-              <Text style={styles.closeButton}>Cerrar</Text>
-            </TouchableOpacity>
-          </View>
-        </Modal>
+      {searchResults.length > 0 && (
+        <FlatList
+          data={searchResults}
+          keyExtractor={item => item.id}
+          horizontal
+          renderItem={renderMovie}
+          contentContainerStyle={{ paddingBottom: 20 }}
+        />
       )}
 
-    </View>
+      <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
+          {trendingMoviesNow.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>🎞️ Películas del momento</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                {trendingMoviesNow.map(item => (
+                  <TouchableOpacity key={item.id} onPress={() => openModal(item)}>
+                    <Image source={{ uri: item.poster }} style={styles.poster} />
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
+
+          {trendingTVNow.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>📺 Series del momento</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                {trendingTVNow.map(item => (
+                  <TouchableOpacity key={item.id} onPress={() => openModal(item)}>
+                    <Image source={{ uri: item.poster }} style={styles.poster} />
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
+        {Object.keys(watchlists).map((listName, idx) => (
+          <View key={idx} style={styles.section}>
+            <Text style={styles.sectionTitle}>{listName}</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {watchlists[listName].map(item => (
+                <View key={item.id} style={styles.itemContainer}>
+                  <TouchableOpacity onPress={() => openModal(item)}>
+                    <Image source={{ uri: item.poster }} style={styles.poster} />
+                  </TouchableOpacity>
+                  <Text numberOfLines={1} style={styles.itemTitle}>{item.title}</Text>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        ))}
+      </ScrollView>
+
+      {feedbackMessage !== '' && (
+        <Animated.View style={[styles.toast, { opacity: toastOpacity }]}> 
+          <Text style={styles.toastText}>{feedbackMessage}</Text>
+        </Animated.View>
+      )}
+
+      {/* Modal para crear listas */}
+      <Modal visible={customListModalVisible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.customListModal}>
+            <Text style={styles.modalTitle}>Nueva lista</Text>
+            <TextInput
+              placeholder="Nombre de la lista"
+              placeholderTextColor="#ccc"
+              style={styles.input}
+              value={customListName}
+              onChangeText={setCustomListName}
+            />
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={() => {
+                if (customListName.trim()) {
+                  setWatchlists(prev => ({ ...prev, [customListName]: [] }));
+                }
+                setCustomListModalVisible(false);
+                setCustomListName('');
+              }}
+            >
+              <Text style={styles.modalButtonText}>Crear</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal para elegir lista */}
+      <Modal visible={selectListModalVisible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.customListModal}>
+            <Text style={styles.modalTitle}>¿A qué lista quieres agregarlo?</Text>
+            {Object.keys(watchlists).map((listName, idx) => (
+              <TouchableOpacity
+                key={idx}
+                style={styles.modalButton}
+                onPress={() => {
+                  handleAddToList(movieToAdd, listName);
+                  setSelectListModalVisible(false);
+                }}
+              >
+                <Text style={styles.modalButtonText}>{listName}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={showMovieModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowMovieModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.customListModal, { alignItems: 'flex-start' }]}>
+            {selectedMovie && (
+              <>
+                <Image
+                  source={{ uri: selectedMovie.Poster }}
+                  style={{ width: '100%', height: 250, borderRadius: 8, marginBottom: 10 }}
+                  resizeMode="cover"
+                />
+                <Text style={{ color: '#f5e8da', fontSize: 18, fontWeight: 'bold' }}>{selectedMovie.Title}</Text>
+                <Text style={{ color: '#d6b58c', marginVertical: 4 }}>{selectedMovie.Year}</Text>
+                <Text style={{ color: '#fff', marginBottom: 10 }}>{selectedMovie.Plot}</Text>
+                <Text style={{ color: '#d6b58c' }}>{selectedMovie.Genre}</Text>
+                <Text style={{ color: '#d6b58c' }}>{selectedMovie.Runtime}</Text>
+                {selectedMovie.WatchProviders?.Streaming?.length > 0 && (
+                  <>
+                    <Text style={{ color: '#d6b58c', marginTop: 10 }}>Disponible en:</Text>
+                    <Text style={{ color: '#f5e8da' }}>{selectedMovie.WatchProviders.Streaming.join(', ')}</Text>
+                  </>
+                )}
+                <TouchableOpacity
+                  style={[styles.modalButton, { backgroundColor: '#805b4e', marginTop: 15 }]}
+                  onPress={() => setShowMovieModal(false)}
+                >
+                  <Text style={styles.modalButtonText}>Cerrar</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fdf6e3',
+    backgroundColor: '#3F3330',
     padding: 10,
   },
-  header: {
-    color: '#4e342e',
-    fontSize: 24,
-    fontWeight: 'bold',
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 15,
   },
-  searchInput: {
-    backgroundColor: '#e1c699',
-    color: '#4e342e',
+  header: {
+    color: '#f5e8da',
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#3b2a28',
     borderRadius: 10,
-    paddingHorizontal: 15,
+    paddingHorizontal: 10,
     height: 40,
     marginBottom: 20,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    color: '#f5e8da',
   },
   section: {
     marginBottom: 30,
   },
   sectionTitle: {
-    color: '#4e342e',
+    color: '#f5e8da',
     fontSize: 18,
     fontWeight: '600',
     marginBottom: 10,
@@ -210,7 +376,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   itemTitle: {
-    color: '#4e342e',
+    color: '#f5e8da',
     fontSize: 12,
     marginTop: 5,
   },
@@ -218,47 +384,62 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 5,
     right: 5,
-    backgroundColor: '#7b5e57',
+    backgroundColor: '#2f1d1a',
     borderRadius: 12,
     padding: 2,
   },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: '#fdf6e3',
-    padding: 20,
-  },
-  modalTitle: {
-    color: '#4e342e',
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginBottom: 10,
-  },
-  modalImage: {
-    width: '100%',
-    height: 200,
+  toast: {
+    position: 'absolute',
+    bottom: 30,
+    left: 20,
+    right: 20,
+    backgroundColor: '#3b2a28',
+    padding: 12,
     borderRadius: 10,
-    marginBottom: 10,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowOffset: { width: 0, height: 3 },
+    shadowRadius: 6,
+    elevation: 5,
   },
-  modalOverview: {
-    color: '#5c4033',
+  toastText: {
+    color: '#f5e8da',
     fontSize: 14,
-    textAlign: 'justify',
-    marginBottom: 10,
   },
-  closeButton: {
-    color: '#bc8f8f',
-    fontSize: 18,
-    textAlign: 'center',
-    marginTop: 20,
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  platformTitle: {
-    color: '#4e342e',
-    fontSize: 16,
+  customListModal: {
+    width: '85%',
+    backgroundColor: '#3F3330',
+    borderRadius: 12,
+    padding: 20,
+    alignItems: 'center',
+  },
+  input: {
+    width: '100%',
+    backgroundColor: '#fff',
+    color: '#000',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     marginTop: 10,
-    fontWeight: '600',
   },
-  platformName: {
-    color: '#5c4033',
-    fontSize: 14,
+  modalButton: {
+    marginTop: 10,
+    backgroundColor: '#a18677',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    width: '100%',
+    alignItems: 'center',
+  },
+  modalButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
   },
 });
