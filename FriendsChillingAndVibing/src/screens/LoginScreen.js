@@ -102,21 +102,19 @@ const styles = StyleSheet.create({
   },
   overlayText: {
     position: 'absolute',
-    top: '35%', // Ajusta si es necesario
-    left: 10, // Pegado a la izquierda
-    textAlign: 'left',
-    color: '#e5caac',
-    fontSize: 32,
-    fontWeight: 'bold',
+    top: '35%',
+    left: 10,
     zIndex: 2,
+    // 🔴 quita estilos de texto como estos:
+    // color: '#e5caac',
+    // fontSize: 32,
+    // fontWeight: 'bold',
   },  
-  textStyle:{
-    left: 10, // Pegado a la izquierda
+  textStyle: {
     textAlign: 'left',
     color: '#e5caac',
     fontSize: 32,
     fontWeight: 'bold',
-    zIndex: 2,
   },
   logo: {
     width: '100%',
