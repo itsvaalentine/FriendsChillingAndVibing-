@@ -1,14 +1,22 @@
-import React, { useEffect, useState } from 'react';
-import {
-  View, Text, StyleSheet, ScrollView,
-  TouchableOpacity, Image, TextInput, Modal, Animated, FlatList
-} from 'react-native';
-import {
-  getTrending, getMovieDetails,
-  searchMovies, searchTV
-} from '../services/tmdb';
 import { Ionicons } from '@expo/vector-icons';
+import { useEffect, useState } from 'react';
+import {
+  Animated, FlatList,
+  Image,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  getMovieDetails,
+  getTrending,
+  searchMovies
+} from '../services/tmdb';
 
 export default function MainScreen() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -40,8 +48,8 @@ export default function MainScreen() {
       const formatItem = (item, isTV = false) => ({
         id: item.id,
         title: isTV ? item.name : item.title,
-        poster: item.poster_path
-          ? `https://image.tmdb.org/t/p/w500${item.poster_path}`
+        poster: item.poster
+          ? `https://image.tmdb.org/t/p/w500${item.poster}`
           : 'https://via.placeholder.com/300x450?text=No+Image',
         mediaType: isTV ? 'tv' : 'movie',
       });
@@ -50,8 +58,8 @@ export default function MainScreen() {
       setTrendingTVNow(trendingNowTV.map(m => ({
         id: m.id,
         title: m.name,
-        poster: m.poster_path
-          ? `https://image.tmdb.org/t/p/w500${m.poster_path}`
+        poster: m.poster
+          ? `https://image.tmdb.org/t/p/w500${m.poster}`
           : 'https://via.placeholder.com/300x450?text=No+Image',
         mediaType: 'tv'
       })));
@@ -181,7 +189,7 @@ export default function MainScreen() {
       )}
 
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
-          {/* {trendingMoviesNow.length > 0 && (
+          {trendingMoviesNow.length > 0 && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>🎞 Películas del momento</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -206,7 +214,7 @@ export default function MainScreen() {
                 ))}
               </ScrollView>
             </View>
-          )} */}
+          )} 
 
         {Object.keys(watchlists).map((listName, idx) => (
           <View key={idx} style={styles.section}>
