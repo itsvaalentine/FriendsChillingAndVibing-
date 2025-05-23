@@ -42,8 +42,8 @@ export default function MainScreen() {
     try {
       const trendingNowMovies = await getTrending('movie', 'day');
       const trendingNowTV = await getTrending('tv', 'day');
-      console.log('Trending TV:', trendingNowTV);
-      console.log('Trending Movies:', trendingNowMovies);
+      // console.log('Trending TV:', trendingNowTV);
+      // console.log('Trending Movies:', trendingNowMovies);
 
       const formatItem = (item, isTV = false) => ({
         id: item.id,
@@ -238,6 +238,7 @@ export default function MainScreen() {
           <Text style={styles.toastText}>{feedbackMessage}</Text>
         </Animated.View>
       )}
+
 
       {/* Modal para crear listas */}
       <Modal visible={customListModalVisible} transparent animationType="fade">
