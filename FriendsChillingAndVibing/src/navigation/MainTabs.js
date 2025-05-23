@@ -1,8 +1,8 @@
-import React from 'react';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import MainScreen from '../screens/MainScreen';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import FriendsScreen from '../screens/FriendsScreen';
+import IAScreen from '../screens/IAScreen';
+import MainScreen from '../screens/MainScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 
 const Tab = createBottomTabNavigator();
@@ -24,12 +24,14 @@ export default function MainTabs() {
           if (route.name === 'Inicio') iconName = 'home';
           else if (route.name === 'Amigos') iconName = 'people';
           else if (route.name === 'Perfil') iconName = 'person';
+          else if (route.name === 'IA Friend') iconName = 'rocket';
 
           return <Ionicons name={iconName} size={size} color={color} />;
         },
       })}
     >
       <Tab.Screen name="Inicio" component={MainScreen} />
+      <Tab.Screen name="IA Friend" component={IAScreen} />
       <Tab.Screen name="Amigos" component={FriendsScreen} />
       <Tab.Screen name="Perfil" component={ProfileScreen} />
     </Tab.Navigator>

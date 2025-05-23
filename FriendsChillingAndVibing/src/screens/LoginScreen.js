@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import CustomButton from '../components/CustomButton';
 import InputField from '../components/InputField';
+import PasswordInput from '../components/PasswordInput';
 import { login } from '../services/auth';
 
 export default function LoginScreen({ navigation }) {
@@ -53,7 +54,7 @@ export default function LoginScreen({ navigation }) {
             onChangeText={setEmail}
             placeholder="Email"
           />
-          <InputField
+          <PasswordInput
             value={password}
             onChangeText={setPassword}
             placeholder="Contraseña"
