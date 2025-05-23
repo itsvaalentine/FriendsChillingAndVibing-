@@ -3,7 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import * as Font from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { useCallback, useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import AppNavigator from './src/navigation/StackNavigator';
 
 SplashScreen.preventAutoHideAsync();
@@ -37,10 +37,10 @@ export default function App() {
   }
 
   return (
-    <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
+    <GestureHandlerRootView style={{ flex: 1 }} onLayout={onLayoutRootView}>
       <NavigationContainer>
-        <AppNavigator /> {/* ✅ Usa el stack con Login + Home */}
+        <AppNavigator />
       </NavigationContainer>
-    </View>
+    </GestureHandlerRootView>
   );
 }
